@@ -99,7 +99,8 @@
   var items = [], sortKey = "created_at", sortDir = -1, updated = "";
   var $ = function (id) { return document.getElementById(id); };
 
-  $("thead").innerHTML = COLS.map(function (c) { return '<th data-k="' + c[0] + '">' + c[1] + '<span></span></th>'; }).join("") + '<th></th>';
+  $("thead").innerHTML = COLS.map(function (c) { return '<th data-k="' + c[0] + '">' + c[1] + '<span></span></th>'; }).join("");
+  $("thead").insertAdjacentHTML("afterbegin", "<th></th>");
   $("thead").onclick = function (e) {
     var th = e.target.closest("th"); if (!th || !th.dataset.k) return;
     var k = th.dataset.k;
@@ -172,6 +173,7 @@
 
   function render() {
     Array.prototype.forEach.call($("thead").children, function (th) {
+      if (!th.dataset.k) return;
       th.lastChild.textContent = th.dataset.k === sortKey ? (sortDir > 0 ? " ↑" : " ↓") : "";
     });
     var rows = filtered().sort(function (a, b) {
@@ -180,14 +182,14 @@
       return (x > y ? 1 : x < y ? -1 : 0) * sortDir;
     });
     $("tbody").innerHTML = rows.map(function (o) {
-      return '<tr>' + COLS.map(function (c) {
+      return '<tr><td><button class="btn btn-ghost del" data-code="' + EPT.esc(o.code) + '" title="Supprimer cet inscrit" style="color:var(--color-accent-2-700)">Supprimer</button></td>' + COLS.map(function (c) {
         var k = c[0], v = o[k];
         if (k === "checked_in") return '<td><span class="tag ' + (v ? "tag-accent" : "tag-neutral") + '">' + (v ? "Présent" : "Absent") + '</span></td>';
         if (k === "checked_in_at" || k === "created_at") return '<td class="text-muted num-c">' + EPT.esc(EPT.fmtDate(v)) + '</td>';
         if (k === "last_name") return '<td style="font-weight:600">' + EPT.esc(v) + '</td>';
         if (k === "code") return '<td style="font-size:12px;color:var(--color-accent-700)">' + EPT.esc(v) + '</td>';
         return '<td>' + EPT.esc(v) + '</td>';
-      }).join("") + '<td><button class="btn btn-ghost del" data-code="' + EPT.esc(o.code) + '" title="Supprimer cet inscrit" style="color:var(--color-accent-2-700)">Supprimer</button></td></tr>';
+      }).join("") + '</tr>';
     }).join("");
     $("count").textContent = rows.length + " résultat(s)";
   }
