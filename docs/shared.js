@@ -10,6 +10,15 @@
     } catch (e) { return null; }
   }
 
+  // Lien de connexion en un clic : page.html#t=TOKEN (le fragment n'est jamais envoyé au serveur).
+  try {
+    var m = /[#&]t=([^&]+)/.exec(location.hash);
+    if (m) {
+      ls("ept_token", decodeURIComponent(m[1]));
+      history.replaceState(null, "", location.pathname + location.search);
+    }
+  } catch (e) {}
+
   var EPT = {
     apiUrl: function () { return ls("ept_api_url") || DEFAULT_API_URL; },
     token: function () { return ls("ept_token") || ""; },
