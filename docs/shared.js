@@ -1,7 +1,7 @@
 /* Partagé par index.html et scan.html : config, token, appels API. */
 (function () {
   // Renseigner l'URL /exec ici (non secrète) pour que le staff n'ait que le token à saisir.
-  var DEFAULT_API_URL = "";
+  var DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbyWX9Ituh5oOX60MfPLRn9SZWDLl6N0GIrZGWYCRC2FTdmoZwxXAdvReJrrD0LVw2uO/exec";
 
   function ls(k, v) {
     try {
