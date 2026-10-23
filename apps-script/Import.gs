@@ -53,3 +53,27 @@ function htmlText_(s) {
           .replace(/&#39;/g, "'").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
           .trim();
 }
+
+/** Diagnostic : compte les mails trouvés, montre le Sheet utilisé et son contenu. */
+function diagnostic() {
+  const queries = [
+    'subject:"Nouvelle inscription"',
+    'subject:"Nouvelle inscription :"',
+    'in:anywhere subject:"Nouvelle inscription"',
+    'in:anywhere "Code QR" EPT26'
+  ];
+  queries.forEach(function (q) {
+    Logger.log(q + " -> " + GmailApp.search(q, 0, 100).length + " conversation(s)");
+  });
+  Logger.log("Compte Gmail du script : " + Session.getEffectiveUser().getEmail());
+  const sh = getSheet_();
+  Logger.log("Sheet utilisé : " + sh.getParent().getUrl());
+  Logger.log("Lignes de données : " + Math.max(0, sh.getLastRow() - 1));
+
+  const threads = GmailApp.search('in:anywhere subject:"Nouvelle inscription"', 0, 1);
+  if (threads.length) {
+    const body = threads[0].getMessages()[0].getBody();
+    Logger.log("Extrait du 1er mail : " + body.slice(0, 400).replace(/\s+/g, " "));
+    Logger.log("Parsing du 1er mail : " + JSON.stringify(parseRegistrationMail_(body)));
+  }
+}
