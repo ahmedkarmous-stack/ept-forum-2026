@@ -22,8 +22,12 @@ const HEADERS = [
 
 /** À exécuter une fois depuis l'éditeur. Crée la feuille et le token. */
 function setup() {
-  const sh = getSheet_();
   const props = PropertiesService.getScriptProperties();
+  // Projet autonome (non lié à un Sheet) : on crée le Sheet et on mémorise son id.
+  if (!SpreadsheetApp.getActiveSpreadsheet() && !props.getProperty("SHEET_ID")) {
+    props.setProperty("SHEET_ID", SpreadsheetApp.create("EPT Forum - Inscriptions").getId());
+  }
+  const sh = getSheet_();
   if (!props.getProperty("API_TOKEN")) {
     props.setProperty("API_TOKEN", Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "").slice(0, 8));
   }
