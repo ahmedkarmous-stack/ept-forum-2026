@@ -1,0 +1,4 @@
+.clasp.json
+.env
+*.local
+Thumbs.db

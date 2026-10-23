@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EPT Forum – Scanner</title>
+<meta name="theme-color" content="#0b2a5b">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="style.css">
+<style>
+  body { background: #000; color: #fff; }
+  header.top { padding: 8px 12px; }
+  header.top h1 { font-size: 16px; }
+  #count { background: rgba(255,255,255,.15); padding: 6px 12px; border-radius: 99px; font-weight: 700; }
+  #reader { width: 100%; max-width: 560px; margin: 0 auto; }
+  #reader video { object-fit: cover; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px; max-width: 560px; margin: 0 auto; align-items: center; }
+  .tools input[type=text] { flex: 1; min-width: 150px; text-transform: uppercase; }
+  .tools label { font-size: 14px; display: flex; gap: 6px; align-items: center; }
+  #camerr { color: #ffb4b4; padding: 12px; text-align: center; }
+  #result { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; text-align: center; padding: 24px; }
+  #result[hidden] { display: none; }
+  #result.valid { background: var(--ok); }
+  #result.in { background: var(--ok); }
+  #result.dup { background: var(--warn); }
+  #result.unknown, #result.err { background: var(--bad); }
+  #result .big { font-size: 40px; font-weight: 800; letter-spacing: 1px; margin: 0 0 12px; }
+  #result .name { font-size: 30px; font-weight: 700; margin: 4px 0; }
+  #result .sub { font-size: 18px; opacity: .95; margin: 4px 0; }
+  #result .actions { display: grid; gap: 12px; margin-top: 28px; }
+  #result button { font-size: 20px; padding: 16px 28px; background: #fff; color: #111; font-weight: 700; }
+  #result button.sec { background: rgba(0,0,0,.25); color: #fff; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Scanner – EPT Forum</h1>
+  <span id="count">– / –</span>
+  <a class="btn ghost" href="index.html">Dashboard</a>
+</header>
+
+<div id="reader"></div>
+<div id="camerr" hidden></div>
+
+<div class="tools">
+  <input type="text" id="manual" placeholder="Saisie manuelle : EPT26-xxxxxxx" autocomplete="off" autocapitalize="characters">
+  <button id="manual-go">Vérifier</button>
+  <label><input type="checkbox" id="auto"> Check-in automatique</label>
+  <label><input type="checkbox" id="sound" checked> Son</label>
+</div>
+
+<div id="result" hidden>
+  <div>
+    <p class="big" id="r-title"></p>
+    <p class="name" id="r-name"></p>
+    <p class="sub" id="r-line1"></p>
+    <p class="sub" id="r-line2"></p>
+    <div class="actions">
+      <button id="r-confirm" hidden>Valider l'entrée</button>
+      <button id="r-next" class="sec">Scanner suivant</button>
+    </div>
+  </div>
+</div>
+
+<div id="login" hidden>
+  <form id="login-form">
+    <h2>EPT Forum – Accès staff</h2>
+    <label>URL de l'API (Apps Script /exec)<br><input id="login-url" type="url" style="width:100%" placeholder="https://script.google.com/macros/s/…/exec"></label>
+    <label>Token<br><input id="login-token" type="password" style="width:100%" required></label>
+    <button type="submit">Se connecter</button>
+    <p id="login-msg"></p>
+  </form>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="shared.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var COOLDOWN_MS = 4000;
+  var scanner = null, busy = false, lastCode = "", lastAt = 0, pending = null;
+  var device = (function () {
+    var d = EPT.pref("device");
+    if (!d) { d = "scan-" + Math.random().toString(36).slice(2, 6); EPT.pref("device", d); }
+    return d;
+  })();
+
+  $("auto").checked = EPT.pref("auto") === "1";
+  $("sound").checked = EPT.pref("sound") !== "0";
+  $("auto").onchange = function () { EPT.pref("auto", this.checked ? "1" : "0"); };
+  $("sound").onchange = function () { EPT.pref("sound", this.checked ? "1" : "0"); };
+
+  /* ---------- feedback ---------- */
+  var actx = null;
+  function beep(freq, ms, times) {
+    if (!$("sound").checked) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      var t = actx.currentTime;
+      for (var i = 0; i < times; i++) {
+        var o = actx.createOscillator(), g = actx.createGain();
+        o.frequency.value = freq; o.type = "square"; g.gain.value = 0.15;
+        o.connect(g); g.connect(actx.destination);
+        o.start(t + i * (ms + 60) / 1000); o.stop(t + i * (ms + 60) / 1000 + ms / 1000);
+      }
+    } catch (e) {}
+  }
+  function buzz(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
+
+  /* ---------- écran résultat ---------- */
+  function show(kind, o) {
+    var r = $("result");
+    r.className = kind; r.hidden = false;
+    $("r-title").textContent = o.title;
+    $("r-name").textContent = o.name || "";
+    $("r-line1").textContent = o.l1 || "";
+    $("r-line2").textContent = o.l2 || "";
+    $("r-confirm").hidden = !o.confirm;
+    if (kind === "in" || kind === "valid") { beep(880, 140, 1); buzz(80); }
+    else if (kind === "dup") { beep(520, 160, 2); buzz([120, 80, 120]); }
+    else { beep(220, 380, 1); buzz([300, 100, 300]); }
+  }
+  function personLines(p) {
+    return {
+      name: (p.first_name + " " + p.last_name).trim(),
+      l1: [p.profession, p.workshop ? "Atelier : " + p.workshop : ""].filter(Boolean).join(" · "),
+      l2: p.school || p.organisation || ""
+    };
+  }
+  function showResponse(res) {
+    var p = res.person ? personLines(res.person) : {};
+    if (res.status === "valid") {
+      pending = res.person.code;
+      show("valid", { title: "✅ VALIDE", name: p.name, l1: p.l1, l2: p.l2, confirm: true });
+    } else if (res.status === "checked_in") {
+      pending = null; refreshCount();
+      show("in", { title: "✅ ENTRÉE VALIDÉE", name: p.name, l1: p.l1, l2: p.l2 });
+    } else if (res.status === "already_checked_in") {
+      pending = null;
+      show("dup", { title: "⚠️ DÉJÀ SCANNÉ", name: p.name, l1: "Premier check-in : " + EPT.fmtDate(res.checked_in_at), l2: p.l1 });
+    } else {
+      pending = null;
+      show("unknown", { title: "⛔ INCONNU", name: "Code absent de la base" });
+    }
+  }
+  function showError(e) {
+    if (e && e.code === "unauthorized") { EPT.logout(); location.reload(); return; }
+    show("err", { title: "ERREUR RÉSEAU", name: "Réessayez", l1: String(e && e.message || e) });
+  }
+
+  /* ---------- logique de scan ---------- */
+  function handle(raw) {
+    var code = String(raw || "").trim(); // le responseId est sensible à la casse : pas de toUpperCase
+    if (!code || busy) return;
+    var now = Date.now();
+    if (code === lastCode && now - lastAt < COOLDOWN_MS) return;
+    lastCode = code; lastAt = now; busy = true;
+    pauseScanner();
+
+    if (code.indexOf("EPT26-") !== 0) { showResponse({ status: "unknown" }); return; }
+
+    var call = $("auto").checked
+      ? EPT.post({ action: "checkin", code: code, by: device })
+      : EPT.get({ action: "verify", code: code });
+    call.then(showResponse).catch(showError);
+  }
+
+  $("r-confirm").onclick = function () {
+    if (!pending) return;
+    var btn = this; btn.disabled = true;
+    EPT.post({ action: "checkin", code: pending, by: device })
+      .then(showResponse).catch(showError).then(function () { btn.disabled = false; });
+  };
+  $("r-next").onclick = function () {
+    $("result").hidden = true; pending = null; busy = false; resumeScanner();
+  };
+  $("manual-go").onclick = submitManual;
+  $("manual").onkeydown = function (e) { if (e.key === "Enter") submitManual(); };
+  function submitManual() {
+    var v = $("manual").value.trim();
+    if (!v) return;
+    if (!/^EPT26-/i.test(v)) v = "EPT26-" + v;
+    v = "EPT26-" + v.slice(6);                // préfixe normalisé, responseId inchangé
+    $("manual").value = "";
+    lastCode = ""; handle(v);
+  }
+
+  function pauseScanner() { try { scanner && scanner.pause(true); } catch (e) {} }
+  function resumeScanner() { try { scanner && scanner.resume(); } catch (e) {} }
+
+  function startCamera() {
+    scanner = new Html5Qrcode("reader", { formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] });
+    var w = Math.min(window.innerWidth, 560);
+    scanner.start({ facingMode: "environment" },
+      { fps: 10, qrbox: Math.round(w * 0.7) },
+      handle, function () {})
+      .catch(function (err) {
+        $("camerr").hidden = false;
+        $("camerr").textContent = "Caméra indisponible (" + err + "). Utilisez la saisie manuelle ci-dessous.";
+      });
+  }
+
+  function refreshCount() {
+    EPT.get({ action: "stats" }).then(function (r) {
+      $("count").textContent = r.stats.checked_in + " / " + r.stats.total;
+    }).catch(function () {});
+  }
+
+  function start() {
+    startCamera(); refreshCount();
+    setInterval(function () { if (!document.hidden) refreshCount(); }, 15000);
+  }
+  if (EPT.configured()) start(); else EPT.login(start);
+})();
+</script>
+</body>
+</html>

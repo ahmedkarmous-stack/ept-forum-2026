@@ -1,0 +1,19 @@
+{
+  "eventType": "FORM_RESPONSE",
+  "createdAt": "2026-10-21T22:20:48.029Z",
+  "data": {
+    "responseId": "rTEST001",
+    "fields": [
+      { "label": "First Name", "type": "INPUT_TEXT", "value": "Mokhles" },
+      { "label": "Last Name", "type": "INPUT_TEXT", "value": "Test" },
+      { "label": "Email Address", "type": "INPUT_EMAIL", "value": "" },
+      { "label": "Phone Number (Optional)", "type": "INPUT_PHONE_NUMBER", "value": "+21611222333" },
+      { "label": "What is your profession?", "type": "MULTIPLE_CHOICE", "value": ["id1"],
+        "options": [{ "id": "id1", "text": "Student" }, { "id": "id2", "text": "Engineer" }] },
+      { "label": "School Name", "type": "INPUT_TEXT", "value": "EPT" },
+      { "label": "Organisation Name", "type": "INPUT_TEXT", "value": "-" },
+      { "label": "Do you intend to attend a workshop?", "type": "MULTIPLE_CHOICE", "value": ["y"],
+        "options": [{ "id": "y", "text": "Yes" }, { "id": "n", "text": "No" }] }
+    ]
+  }
+}

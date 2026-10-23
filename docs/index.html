@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EPT Forum – Dashboard</title>
+<meta name="theme-color" content="#0b2a5b">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>EPT Forum Enterprises 2026 – Dashboard</h1>
+  <a class="btn ghost" href="scan.html">Scanner</a>
+  <button class="ghost" id="export">Export CSV</button>
+  <button class="ghost" id="refresh">Rafraîchir</button>
+  <button class="ghost" id="logout">Déconnexion</button>
+</header>
+
+<main>
+  <section class="cards">
+    <div class="card"><div class="n" id="s-total">–</div><div class="l">Inscrits</div></div>
+    <div class="card"><div class="n" id="s-in">–</div><div class="l">Présents</div></div>
+    <div class="card"><div class="n" id="s-rate">–</div><div class="l">Taux de présence</div></div>
+    <div class="card"><div class="n" id="s-ws">–</div><div class="l">Atelier : oui / non</div></div>
+  </section>
+
+  <section class="panels">
+    <div class="card"><b>Par profession</b><div id="p-prof"></div></div>
+    <div class="card"><b>Top écoles</b><div id="p-school"></div></div>
+  </section>
+
+  <div class="filters">
+    <input type="search" id="q" placeholder="Rechercher (nom, email, école, code…)">
+    <select id="f-prof"><option value="">Profession</option></select>
+    <select id="f-ws"><option value="">Atelier</option><option>Yes</option><option>No</option></select>
+    <select id="f-in"><option value="">Présence</option><option value="1">Présents</option><option value="0">Absents</option></select>
+    <select id="f-school"><option value="">École</option></select>
+  </div>
+  <div class="status" id="status"></div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</main>
+
+<div id="login" hidden>
+  <form id="login-form">
+    <h2>EPT Forum – Accès</h2>
+    <label>URL de l'API (Apps Script /exec)<br><input id="login-url" type="url" style="width:100%" placeholder="https://script.google.com/macros/s/…/exec"></label>
+    <label>Token<br><input id="login-token" type="password" style="width:100%" required autocomplete="current-password"></label>
+    <button type="submit">Se connecter</button>
+    <p id="login-msg"></p>
+  </form>
+</div>
+
+<script src="shared.js"></script>
+<script>
+(function () {
+  var COLS = [
+    ["checked_in", "Présence"], ["last_name", "Nom"], ["first_name", "Prénom"], ["email", "Email"],
+    ["phone", "Téléphone"], ["profession", "Profession"], ["school", "École"],
+    ["organisation", "Organisation"], ["workshop", "Atelier"], ["checked_in_at", "Check-in"],
+    ["created_at", "Inscrit le"], ["code", "Code"]
+  ];
+  var items = [], sortKey = "created_at", sortDir = -1, timer = null;
+  var $ = function (id) { return document.getElementById(id); };
+
+  $("thead").innerHTML = COLS.map(function (c) { return '<th data-k="' + c[0] + '">' + c[1] + '</th>'; }).join("");
+  $("thead").onclick = function (e) {
+    var k = e.target.dataset.k; if (!k) return;
+    if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; }
+    render();
+  };
+  ["q", "f-prof", "f-ws", "f-in", "f-school"].forEach(function (id) { $(id).oninput = render; });
+  $("refresh").onclick = load;
+  $("logout").onclick = function () { EPT.logout(); location.reload(); };
+  $("export").onclick = exportCsv;
+
+  function load() {
+    $("status").textContent = "Chargement…";
+    Promise.all([EPT.get({ action: "list" }), EPT.get({ action: "stats" })]).then(function (r) {
+      items = r[0].items;
+      renderStats(r[1].stats);
+      fillOptions();
+      render();
+      $("status").textContent = "Mis à jour à " + new Date().toLocaleTimeString("fr-FR") + " (auto toutes les 30 s)";
+    }).catch(function (e) {
+      if (e.code === "unauthorized") { EPT.logout(); location.reload(); return; }
+      $("status").textContent = "Erreur de chargement : " + e.message;
+    });
+  }
+
+  function bars(el, obj, total, limit) {
+    var rows = Object.keys(obj).sort(function (a, b) { return obj[b] - obj[a]; }).slice(0, limit || 99);
+    el.innerHTML = rows.map(function (k) {
+      var pct = total ? Math.round(obj[k] / total * 100) : 0;
+      return '<div class="bar"><span class="name" title="' + EPT.esc(k) + '">' + EPT.esc(k) + '</span>' +
+        '<span class="track"><span class="fill" style="display:block;width:' + pct + '%"></span></span>' +
+        '<span class="val">' + obj[k] + ' · ' + pct + '%</span></div>';
+    }).join("") || '<div class="status">Aucune donnée</div>';
+  }
+
+  function renderStats(s) {
+    $("s-total").textContent = s.total;
+    $("s-in").textContent = s.checked_in;
+    $("s-rate").textContent = s.rate + " %";
+    $("s-ws").textContent = s.workshop.Yes + " / " + s.workshop.No;
+    bars($("p-prof"), s.by_profession, s.total);
+    bars($("p-school"), s.by_school, s.total, 8);
+  }
+
+  function fillOptions() {
+    [["f-prof", "profession"], ["f-school", "school"]].forEach(function (p) {
+      var sel = $(p[0]), cur = sel.value, first = sel.options[0].outerHTML;
+      var vals = Array.from(new Set(items.map(function (o) { return o[p[1]]; }).filter(Boolean))).sort();
+      sel.innerHTML = first + vals.map(function (v) { return '<option>' + EPT.esc(v) + '</option>'; }).join("");
+      sel.value = cur;
+    });
+  }
+
+  function filtered() {
+    var q = $("q").value.trim().toLowerCase();
+    var fp = $("f-prof").value, fw = $("f-ws").value, fi = $("f-in").value, fs = $("f-school").value;
+    return items.filter(function (o) {
+      if (fp && o.profession !== fp) return false;
+      if (fw && o.workshop !== fw) return false;
+      if (fs && o.school !== fs) return false;
+      if (fi && (fi === "1") !== o.checked_in) return false;
+      if (q && ![o.first_name, o.last_name, o.email, o.phone, o.school, o.organisation, o.code]
+            .join(" ").toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }
+
+  function render() {
+    var rows = filtered().sort(function (a, b) {
+      var x = a[sortKey], y = b[sortKey];
+      if (typeof x === "boolean") { x = +x; y = +y; }
+      return (x > y ? 1 : x < y ? -1 : 0) * sortDir;
+    });
+    $("tbody").innerHTML = rows.map(function (o) {
+      return '<tr>' + COLS.map(function (c) {
+        var k = c[0], v = o[k];
+        if (k === "checked_in") return '<td><span class="pill ' + (v ? "in" : "out") + '">' + (v ? "Présent" : "Absent") + '</span></td>';
+        if (k === "checked_in_at" || k === "created_at") v = EPT.fmtDate(v);
+        return '<td>' + EPT.esc(v) + '</td>';
+      }).join("") + '</tr>';
+    }).join("");
+    $("status").dataset.count = rows.length;
+    var base = $("status").textContent.replace(/^\d+ résultat\(s\) — /, "");
+    $("status").textContent = rows.length + " résultat(s) — " + base;
+  }
+
+  function exportCsv() {
+    var keys = ["code", "created_at", "first_name", "last_name", "email", "phone", "profession", "school",
+                "organisation", "workshop", "checked_in", "checked_in_at", "checked_in_by"];
+    var cell = function (v) {
+      v = String(v == null ? "" : v);
+      if (/^[=+\-@]/.test(v)) v = "'" + v;            // neutralise l'injection de formules Excel
+      return '"' + v.replace(/"/g, '""') + '"';
+    };
+    var lines = [keys.join(",")].concat(filtered().map(function (o) {
+      return keys.map(function (k) { return cell(o[k]); }).join(",");
+    }));
+    var blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "inscrits-ept-forum-" + new Date().toISOString().slice(0, 10) + ".csv";
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+
+  function start() { load(); timer = setInterval(function () { if (!document.hidden) load(); }, 30000); }
+  if (EPT.configured()) start(); else EPT.login(start);
+})();
+</script>
+</body>
+</html>
