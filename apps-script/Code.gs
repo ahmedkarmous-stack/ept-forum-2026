@@ -111,10 +111,35 @@ function tokenOk_(t) {
   return diff === 0;
 }
 
+/**
+ * Nom d'école canonique : insensible à la casse, aux accents, à la ponctuation
+ * et aux abréviations connues (ept / Ept / École Polytechnique de Tunisie -> "EPT").
+ * Pour une école inconnue : un sigle court passe en majuscules, un nom long en "Title Case".
+ */
+function canonicalSchool_(raw) {
+  const txt = clean_(raw).replace(/\s+/g, " ");
+  if (!txt) return "";
+  const key = txt.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
+  if (!key) return txt;
+
+  if (key === "ept" || /polytechnique.*tunis/.test(key) || /polytech.*tunis/.test(key)) return "EPT";
+  if (key === "insat" || /sciencesappliquees.*technologie/.test(key)) return "INSAT";
+  if (key === "enit" || /nationale.*ingenieurs.*tunis/.test(key)) return "ENIT";
+  if (key === "supcom" || key === "supcomtunis" || /ecolesuperieure.*communications/.test(key)) return "SUP'COM";
+  if (key === "ensi" || /nationale.*sciences.*informatique/.test(key)) return "ENSI";
+  if (key === "esprit") return "ESPRIT";
+  if (key === "ihec" || /hautesetudescommerciales/.test(key)) return "IHEC";
+  if (key === "fst" || /facultedessciencesdetunis/.test(key)) return "FST";
+
+  if (key.length <= 6 && txt.indexOf(" ") === -1) return txt.toUpperCase();
+  return txt.toLowerCase().replace(/(^|[\s'\-])([a-zà-ÿ])/g, function (m, p, c) { return p + c.toUpperCase(); });
+}
+
 function rowToObj_(r) {
   const o = {};
   HEADERS.forEach(function (h, i) { o[h] = r[i] === undefined ? "" : String(r[i]); });
   o.checked_in = o.checked_in === "TRUE";
+  o.school = canonicalSchool_(o.school);
   return o;
 }
 
@@ -143,6 +168,7 @@ function findRow_(sh, code) {
  * @return {boolean} true si créé, false si le code existait déjà.
  */
 function addRegistration_(rec) {
+  rec.school = canonicalSchool_(rec.school);
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
@@ -171,6 +197,7 @@ function addRegistrationsBulk_(recs) {
     if (last >= 2) sh.getRange(2, 1, last - 1, 1).getValues().forEach(function (r) { known[String(r[0])] = true; });
     const rows = [];
     recs.forEach(function (rec) {
+      rec.school = canonicalSchool_(rec.school);
       if (known[rec.code]) return;
       known[rec.code] = true;
       rows.push(HEADERS.map(function (h) {
@@ -202,6 +229,7 @@ function doPost(e) {
   if (payload && payload.action) {
     if (!tokenOk_(payload.token)) return json_({ ok: false, error: "unauthorized" });
     if (payload.action === "checkin") return json_(checkin_(String(payload.code || "").trim(), payload.by || ""));
+    if (payload.action === "delete") return json_(delete_(String(payload.code || "").trim()));
     return json_({ ok: false, error: "unknown_action" });
   }
 
@@ -339,6 +367,23 @@ function checkin_(code, by) {
     sh.getRange(row, iCheck, 1, 3).setValues([["TRUE", now, String(by || "")]]);
     SpreadsheetApp.flush();
     return { ok: true, status: "checked_in", person: publicPerson_(o), checked_in_at: now };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Supprime une inscription (ligne du Sheet). Irréversible. */
+function delete_(code) {
+  if (!code) return { ok: true, status: "unknown" };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const sh = getSheet_();
+    const row = findRow_(sh, code);
+    if (row === -1) return { ok: true, status: "unknown" };
+    sh.deleteRow(row);
+    SpreadsheetApp.flush();
+    return { ok: true, status: "deleted", code: code };
   } finally {
     lock.releaseLock();
   }

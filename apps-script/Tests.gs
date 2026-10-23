@@ -8,6 +8,8 @@ function runAllTests() {
   testDuplicateWebhook();
   testVerifyStates();
   testImportParser();
+  testSchoolNormalization();
+  testDelete();
   Logger.log("OK - tests locaux passés. Lancer ensuite testConcurrentCheckinHttp() (nécessite le déploiement).");
 }
 
@@ -119,4 +121,21 @@ function testConcurrentCheckinHttp() {
   const ok = res.filter(function (s) { return s === "checked_in"; }).length;
   assert_(ok === 1, "exactement un check-in réussi sur 3 simultanés");
   deleteTestRows_();
+}
+
+function testSchoolNormalization() {
+  ["ept", "Ept", "EPT", " e.p.t ", "Ecole Polytechnique de Tunisie", "École polytechnique de Tunisie", "polytechnique tunis"]
+    .forEach(function (s) { assert_(canonicalSchool_(s) === "EPT", "école '" + s + "' -> EPT"); });
+  assert_(canonicalSchool_("insat") === "INSAT", "insat -> INSAT");
+  assert_(canonicalSchool_("Sup'Com") === "SUP'COM" && canonicalSchool_("supcom") === "SUP'COM", "supcom -> SUP'COM");
+  assert_(canonicalSchool_("-") === "" && canonicalSchool_("") === "", "'-' ou vide -> vide");
+  assert_(canonicalSchool_("ecole sup de commerce") === canonicalSchool_("ECOLE SUP DE COMMERCE"), "école inconnue : même résultat quelle que soit la casse");
+}
+
+function testDelete() {
+  deleteTestRows_();
+  addRegistration_(recFromPayload_(fakePayload_("TEST-del")));
+  assert_(delete_("EPT26-TEST-del").status === "deleted", "delete : supprimé");
+  assert_(verify_("EPT26-TEST-del").status === "unknown", "delete : plus en base");
+  assert_(delete_("EPT26-TEST-del").status === "unknown", "delete : 2e appel -> unknown");
 }

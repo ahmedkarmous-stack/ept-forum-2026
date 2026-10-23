@@ -46,7 +46,7 @@ Checklist manuelle : Android Chrome et iPhone Safari → ouvrir `scan.html` en H
 ## 5. Fonctionnement
 
 - **Inscription** : `doPost` écrit d'abord la ligne dans le Sheet (dédoublonnée sur `code` sous verrou), puis envoie les deux mails comme avant. Un webhook renvoyé ne crée ni doublon ni second mail.
-- **API** (toutes les routes exigent `token`) : `GET ?action=verify&code=…` (ne modifie rien), `list`, `stats`, `ping` ; `POST {action:"checkin", code, token, by}` atomique via `LockService`.
+- **API** (toutes les routes exigent `token`) : `GET ?action=verify&code=…` (ne modifie rien), `list`, `stats`, `ping` ; `POST {action:"checkin", code, token, by}` atomique via `LockService`. Suppression : `POST {action:"delete", code, token}` (bouton « Supprimer » du dashboard, avec confirmation, irréversible).
 - **Scanner** : vert VALIDE (bouton « Valider l'entrée », ou check-in automatique via la case), orange DÉJÀ SCANNÉ, rouge INCONNU ; bip + vibration ; délai anti-doublon de 4 s ; saisie manuelle ; compteur présents / inscrits.
 - **Sécurité** : le QR ne contient que `EPT26-<id>`. Le token n'est ni dans le code ni dans le dépôt. L'API ne renvoie aucune donnée sans token.
 

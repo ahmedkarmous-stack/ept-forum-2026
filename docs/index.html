@@ -99,9 +99,9 @@
   var items = [], sortKey = "created_at", sortDir = -1, updated = "";
   var $ = function (id) { return document.getElementById(id); };
 
-  $("thead").innerHTML = COLS.map(function (c) { return '<th data-k="' + c[0] + '">' + c[1] + '<span></span></th>'; }).join("");
+  $("thead").innerHTML = COLS.map(function (c) { return '<th data-k="' + c[0] + '">' + c[1] + '<span></span></th>'; }).join("") + '<th></th>';
   $("thead").onclick = function (e) {
-    var th = e.target.closest("th"); if (!th) return;
+    var th = e.target.closest("th"); if (!th || !th.dataset.k) return;
     var k = th.dataset.k;
     if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; }
     render();
@@ -187,10 +187,28 @@
         if (k === "last_name") return '<td style="font-weight:600">' + EPT.esc(v) + '</td>';
         if (k === "code") return '<td style="font-size:12px;color:var(--color-accent-700)">' + EPT.esc(v) + '</td>';
         return '<td>' + EPT.esc(v) + '</td>';
-      }).join("") + '</tr>';
+      }).join("") + '<td><button class="btn btn-ghost del" data-code="' + EPT.esc(o.code) + '" title="Supprimer cet inscrit" style="color:var(--color-accent-2-700)">Supprimer</button></td></tr>';
     }).join("");
     $("count").textContent = rows.length + " résultat(s)";
   }
+
+  $("tbody").onclick = function (e) {
+    var b = e.target.closest(".del"); if (!b) return;
+    var code = b.dataset.code;
+    var o = items.filter(function (x) { return x.code === code; })[0];
+    if (!o) return;
+    var who = (o.first_name + " " + o.last_name).trim() || code;
+    if (!confirm("Supprimer définitivement « " + who + " » de la liste ?\n\nCette action est irréversible (la ligne est supprimée du Sheet).")) return;
+    b.disabled = true;
+    EPT.post({ action: "delete", code: code }).then(function () {
+      items = items.filter(function (x) { return x.code !== code; });
+      render();
+      load();
+    }).catch(function (err) {
+      b.disabled = false;
+      alert("Suppression impossible : " + (err.code === "unauthorized" ? "token invalide" : err.message));
+    });
+  };
 
   function exportCsv() {
     var keys = ["code", "created_at", "first_name", "last_name", "email", "phone", "profession", "school",
