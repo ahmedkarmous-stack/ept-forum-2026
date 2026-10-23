@@ -4,56 +4,85 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>EPT Forum – Dashboard</title>
-<meta name="theme-color" content="#0b2a5b">
+<meta name="theme-color" content="#cbeeff">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header class="top">
-  <h1>EPT Forum Enterprises 2026 – Dashboard</h1>
-  <a class="btn ghost" href="scan.html">Scanner</a>
-  <button class="ghost" id="export">Export CSV</button>
-  <button class="ghost" id="refresh">Rafraîchir</button>
-  <button class="ghost" id="logout">Déconnexion</button>
+<div class="page">
+<div class="press" aria-hidden="true"><div class="bs-plate c"></div><div class="bs-plate m"></div><div class="bs-plate y"></div></div>
+<div class="wrap">
+<header class="head">
+  <div class="brand">
+    <div class="logos">
+      <img src="assets/ept-logo.png" alt="École Polytechnique de Tunisie">
+      <img src="assets/forum-ept-logo.png" alt="Forum EPT Enterprises, 24e édition">
+    </div>
+    <div style="flex:1;min-width:240px">
+      <div class="kicker">24ᵉ édition · Inscriptions</div>
+      <h1>EPT Forum Enterprises 2026</h1>
+    </div>
+  </div>
+  <div class="rule-thick"></div><div class="rule-thin"></div>
+  <nav class="navbar">
+    <span class="status" id="status">Dashboard</span>
+    <a class="btn btn-ghost" href="scan.html">Scanner</a>
+    <button class="btn btn-ghost" id="export">Export CSV</button>
+    <button class="btn btn-ghost" id="refresh">Rafraîchir</button>
+    <button class="btn btn-ghost" id="logout">Déconnexion</button>
+  </nav>
 </header>
 
 <main>
-  <section class="cards">
-    <div class="card"><div class="n" id="s-total">–</div><div class="l">Inscrits</div></div>
-    <div class="card"><div class="n" id="s-in">–</div><div class="l">Présents</div></div>
-    <div class="card"><div class="n" id="s-rate">–</div><div class="l">Taux de présence</div></div>
-    <div class="card"><div class="n" id="s-ws">–</div><div class="l">Atelier : oui / non</div></div>
+  <section class="stats">
+    <div><div class="num" id="s-total">–</div><div class="lbl">Inscrits</div></div>
+    <div>
+      <div class="num-box"><div class="cmyk-num">
+        <span class="paper sin">–</span>
+        <span class="plate plate-c sin" aria-hidden="true">–</span>
+        <span class="plate plate-m sin" aria-hidden="true">–</span>
+        <span class="plate plate-y sin" aria-hidden="true">–</span>
+      </div></div>
+      <div class="lbl">Présents</div>
+    </div>
+    <div><div class="num"><span id="s-rate">–</span><small> %</small></div><div class="lbl">Taux de présence</div></div>
+    <div><div class="num"><span id="s-wsy">–</span><small style="color:var(--color-neutral-600)"> / <span id="s-wsn">–</span></small></div><div class="lbl">Atelier : oui / non</div></div>
   </section>
 
   <section class="panels">
-    <div class="card"><b>Par profession</b><div id="p-prof"></div></div>
-    <div class="card"><b>Top écoles</b><div id="p-school"></div></div>
+    <div><h4>Par profession</h4><div id="p-prof"></div></div>
+    <div><h4>Top écoles</h4><div id="p-school"></div></div>
   </section>
 
-  <div class="filters">
-    <input type="search" id="q" placeholder="Rechercher (nom, email, école, code…)">
-    <select id="f-prof"><option value="">Profession</option></select>
-    <select id="f-ws"><option value="">Atelier</option><option>Yes</option><option>No</option></select>
-    <select id="f-in"><option value="">Présence</option><option value="1">Présents</option><option value="0">Absents</option></select>
-    <select id="f-school"><option value="">École</option></select>
-  </div>
-  <div class="status" id="status"></div>
-
-  <div class="tablewrap">
-    <table>
-      <thead><tr id="thead"></tr></thead>
-      <tbody id="tbody"></tbody>
-    </table>
-  </div>
+  <section class="list">
+    <h3>Inscrits</h3>
+    <div class="filters">
+      <input class="input" type="search" id="q" placeholder="Rechercher (nom, email, école, code…)">
+      <select class="input" id="f-prof"><option value="">Profession</option></select>
+      <select class="input" id="f-ws"><option value="">Atelier</option><option>Yes</option><option>No</option></select>
+      <select class="input" id="f-in"><option value="">Présence</option><option value="1">Présents</option><option value="0">Absents</option></select>
+      <select class="input" id="f-school"><option value="">École</option></select>
+    </div>
+    <div class="count" id="count"></div>
+    <div class="tablewrap">
+      <table class="table"><thead><tr id="thead"></tr></thead><tbody id="tbody"></tbody></table>
+    </div>
+  </section>
 </main>
+</div>
+</div>
 
-<div id="login" hidden>
-  <form id="login-form">
-    <h2>EPT Forum – Accès</h2>
-    <label>URL de l'API (Apps Script /exec)<br><input id="login-url" type="url" style="width:100%" placeholder="https://script.google.com/macros/s/…/exec"></label>
-    <label>Token<br><input id="login-token" type="password" style="width:100%" required autocomplete="current-password"></label>
-    <button type="submit">Se connecter</button>
+<div id="login" class="dialog-backdrop" hidden>
+  <form id="login-form" class="dialog">
+    <div class="logos">
+      <img src="assets/ept-logo.png" alt="EPT" style="height:52px">
+      <img src="assets/forum-ept-logo.png" alt="Forum EPT" style="height:52px;width:52px">
+    </div>
+    <h2 style="margin:0">EPT Forum – Accès</h2>
+    <div class="field"><label>URL de l'API (Apps Script /exec)</label><input class="input" id="login-url" type="url" placeholder="https://script.google.com/macros/s/…/exec"></div>
+    <div class="field"><label>Token</label><input class="input" id="login-token" type="password" required autocomplete="current-password"></div>
+    <button class="btn btn-primary" type="submit">Se connecter</button>
     <p id="login-msg"></p>
   </form>
 </div>
@@ -67,12 +96,13 @@
     ["organisation", "Organisation"], ["workshop", "Atelier"], ["checked_in_at", "Check-in"],
     ["created_at", "Inscrit le"], ["code", "Code"]
   ];
-  var items = [], sortKey = "created_at", sortDir = -1, timer = null;
+  var items = [], sortKey = "created_at", sortDir = -1, updated = "";
   var $ = function (id) { return document.getElementById(id); };
 
-  $("thead").innerHTML = COLS.map(function (c) { return '<th data-k="' + c[0] + '">' + c[1] + '</th>'; }).join("");
+  $("thead").innerHTML = COLS.map(function (c) { return '<th data-k="' + c[0] + '">' + c[1] + '<span></span></th>'; }).join("");
   $("thead").onclick = function (e) {
-    var k = e.target.dataset.k; if (!k) return;
+    var th = e.target.closest("th"); if (!th) return;
+    var k = th.dataset.k;
     if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; }
     render();
   };
@@ -81,17 +111,19 @@
   $("logout").onclick = function () { EPT.logout(); location.reload(); };
   $("export").onclick = exportCsv;
 
+  function setStatus(t) { $("status").textContent = "Dashboard — " + t; }
+
   function load() {
-    $("status").textContent = "Chargement…";
+    setStatus("chargement…");
     Promise.all([EPT.get({ action: "list" }), EPT.get({ action: "stats" })]).then(function (r) {
       items = r[0].items;
       renderStats(r[1].stats);
       fillOptions();
       render();
-      $("status").textContent = "Mis à jour à " + new Date().toLocaleTimeString("fr-FR") + " (auto toutes les 30 s)";
+      setStatus("mis à jour à " + new Date().toLocaleTimeString("fr-FR") + " (auto toutes les 30 s)");
     }).catch(function (e) {
       if (e.code === "unauthorized") { EPT.logout(); location.reload(); return; }
-      $("status").textContent = "Erreur de chargement : " + e.message;
+      setStatus("erreur de chargement : " + e.message);
     });
   }
 
@@ -100,16 +132,17 @@
     el.innerHTML = rows.map(function (k) {
       var pct = total ? Math.round(obj[k] / total * 100) : 0;
       return '<div class="bar"><span class="name" title="' + EPT.esc(k) + '">' + EPT.esc(k) + '</span>' +
-        '<span class="track"><span class="fill" style="display:block;width:' + pct + '%"></span></span>' +
+        '<span class="track"><span class="fill" style="width:' + pct + '%"></span></span>' +
         '<span class="val">' + obj[k] + ' · ' + pct + '%</span></div>';
-    }).join("") || '<div class="status">Aucune donnée</div>';
+    }).join("") || '<div class="empty">Aucune donnée</div>';
   }
 
   function renderStats(s) {
     $("s-total").textContent = s.total;
-    $("s-in").textContent = s.checked_in;
-    $("s-rate").textContent = s.rate + " %";
-    $("s-ws").textContent = s.workshop.Yes + " / " + s.workshop.No;
+    document.querySelectorAll(".sin").forEach(function (el) { el.textContent = s.checked_in; });
+    $("s-rate").textContent = s.rate;
+    $("s-wsy").textContent = s.workshop.Yes;
+    $("s-wsn").textContent = s.workshop.No;
     bars($("p-prof"), s.by_profession, s.total);
     bars($("p-school"), s.by_school, s.total, 8);
   }
@@ -138,6 +171,9 @@
   }
 
   function render() {
+    Array.prototype.forEach.call($("thead").children, function (th) {
+      th.lastChild.textContent = th.dataset.k === sortKey ? (sortDir > 0 ? " ↑" : " ↓") : "";
+    });
     var rows = filtered().sort(function (a, b) {
       var x = a[sortKey], y = b[sortKey];
       if (typeof x === "boolean") { x = +x; y = +y; }
@@ -146,14 +182,14 @@
     $("tbody").innerHTML = rows.map(function (o) {
       return '<tr>' + COLS.map(function (c) {
         var k = c[0], v = o[k];
-        if (k === "checked_in") return '<td><span class="pill ' + (v ? "in" : "out") + '">' + (v ? "Présent" : "Absent") + '</span></td>';
-        if (k === "checked_in_at" || k === "created_at") v = EPT.fmtDate(v);
+        if (k === "checked_in") return '<td><span class="tag ' + (v ? "tag-accent" : "tag-neutral") + '">' + (v ? "Présent" : "Absent") + '</span></td>';
+        if (k === "checked_in_at" || k === "created_at") return '<td class="text-muted num-c">' + EPT.esc(EPT.fmtDate(v)) + '</td>';
+        if (k === "last_name") return '<td style="font-weight:600">' + EPT.esc(v) + '</td>';
+        if (k === "code") return '<td style="font-size:12px;color:var(--color-accent-700)">' + EPT.esc(v) + '</td>';
         return '<td>' + EPT.esc(v) + '</td>';
       }).join("") + '</tr>';
     }).join("");
-    $("status").dataset.count = rows.length;
-    var base = $("status").textContent.replace(/^\d+ résultat\(s\) — /, "");
-    $("status").textContent = rows.length + " résultat(s) — " + base;
+    $("count").textContent = rows.length + " résultat(s)";
   }
 
   function exportCsv() {
@@ -175,7 +211,7 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   }
 
-  function start() { load(); timer = setInterval(function () { if (!document.hidden) load(); }, 30000); }
+  function start() { load(); setInterval(function () { if (!document.hidden) load(); }, 30000); }
   if (EPT.configured()) start(); else EPT.login(start);
 })();
 </script>

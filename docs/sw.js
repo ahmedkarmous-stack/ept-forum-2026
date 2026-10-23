@@ -1,6 +1,6 @@
 /* Cache minimal de la coquille de l'app. Les appels API ne sont jamais mis en cache. */
-var CACHE = "ept-forum-v1";
-var SHELL = ["index.html", "scan.html", "style.css", "shared.js", "manifest.json"];
+var CACHE = "ept-forum-v2";
+var SHELL = ["index.html", "scan.html", "style.css", "shared.js", "assets/ept-logo.png", "assets/forum-ept-logo.png", "manifest.json"];
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }));
